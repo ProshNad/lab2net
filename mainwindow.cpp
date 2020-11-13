@@ -106,6 +106,19 @@ void MainWindow::readyRead()
 
         }
 
+        else{
+            QByteArray fileimage;
+            in>>fileimage;
+            qDebug()<<"got:"<<time<<" "<<type<<" "<<fileimage<<" "<<name<<"isempty:"<<fileimage.isEmpty();
+            ui->textBrowser->append(name+"["+time.toString()+"]:");
+            QFile newfile(QString::number(time.second())+".png");
+            newfile.open(QIODevice::WriteOnly);
+            newfile.write(fileimage);
+            newfile.close();
+             ui->textBrowser->append("<!doctype html><html><img src="+newfile.fileName()+"></html>");
+
+        }
+
     }
 
 
@@ -161,7 +174,34 @@ void MainWindow::on_pushButton_3_clicked()//послать файл
     file.close();
 }
 
-void MainWindow::on_pushButton_4_clicked()
+void MainWindow::on_pushButton_4_clicked()//послать картитнку
 {
+    QString fileName = QFileDialog::getOpenFileName(this,
+                                QString::fromUtf8("Послать картинку"),
+                                QDir::currentPath(),"Images (*.png *.xpm *.jpg)");
+    QFile file(fileName);
+    file.open(QIODevice::ReadOnly);
+    QByteArray by;
+    while (!file.atEnd()) {
+       by.append(file.readAll());
+    }
 
+    if(socketClient->state() == QAbstractSocket::ConnectedState)
+        {
+        QByteArray  arrBlock;
+        QDataStream out(&arrBlock, QIODevice::WriteOnly);
+
+
+            out << quint16(0) << QTime::currentTime() <<QString("image")<<QString(ui->lineEdit_4->text())<<by;
+
+            out.device()->seek(0);
+            out << quint16(arrBlock.size() - sizeof(quint16));
+            socketClient->write(arrBlock); //write the data itself
+            socketClient->waitForBytesWritten();
+            ui->textBrowser->append(ui->lineEdit_4->text()+"["+QTime::currentTime().toString()+"]:");
+            ui->textBrowser->append("<!doctype html><html><img src="+fileName+"></html>");
+            ui->lineEdit->clear();
+
+    }
+    file.close();
 }
